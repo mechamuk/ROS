@@ -1,0 +1,274 @@
+#include <ros/ros.h>			// ROS 기본 헤더 파일 include
+#include <geometry_msgs/Twist.h>	// velocity message
+#include <signal.h>			//시그널 헤더 파일 include
+#include <stdio.h>			//입력/출력 파일 include
+//if not defined, 중복정의를 피하기 위해 다음과 같이 처리함
+#ifndef _WIN32				//OS가 WIN32이면 다음과 같이 include
+# include <termios.h>			// 터미널 제어관련 헤더 파일
+# include <unistd.h>			// 표준 심볼 상수 및 자료형 헤더 파일 
+#else					//다른 OS의 경우 다음과 같이 include
+# include <windows.h>
+#endif
+
+#define KEYCODE_RIGHT 0x43		//각각의 keycode를 다음과 같이 정의한다.
+#define KEYCODE_LEFT 0x44
+#define KEYCODE_UP 0x41
+#define KEYCODE_DOWN 0x42
+#define KEYCODE_B 0x62
+#define KEYCODE_C 0x63
+#define KEYCODE_D 0x64
+#define KEYCODE_E 0x65
+#define KEYCODE_F 0x66
+#define KEYCODE_G 0x67
+#define KEYCODE_Q 0x71
+#define KEYCODE_R 0x72
+#define KEYCODE_T 0x74
+#define KEYCODE_V 0x76
+
+class KeyboardReader				//키보드에서 받은 값을 읽는 클래스
+{
+public:
+  KeyboardReader()
+#ifndef _WIN32					//WIN32인 경우 다음 코드를 실행한다.
+    : kfd(0)					//kfd = 0
+#endif
+  {
+#ifndef _WIN32
+    // get the console in raw mode
+    tcgetattr(kfd, &cooked);				//터미널 속성을 얻는다
+    struct termios raw;					//구조체 선언
+    memcpy(&raw, &cooked, sizeof(struct termios));	//&cooked를 &raw로 구조체 크기만큼 복사
+    raw.c_lflag &=~ (ICANON | ECHO);			//canonical 입력모드 사용, 입력을 다시 출력
+    // Setting a new line, then end of file
+    raw.c_cc[VEOL] = 1;
+    raw.c_cc[VEOF] = 2;
+    tcsetattr(kfd, TCSANOW, &raw);			//터미널 속성을 설정
+#endif
+  }
+  void readOne(char * c)			//키보드로 들어오는  체크
+  {
+#ifndef _WIN32
+    int rc = read(kfd, c, 1);
+    if (rc < 0)					//키보드에서 코드로 정의하지 않은 값이 눌릴 경우
+    {						//값에러가 발생했다는 것을 명시적으로 알려줌
+      throw std::runtime_error("read failed");
+    }
+#else						//다른 OS의경우 아래 코드를 실행한다.
+    for(;;)
+    {
+      HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);	//핸들을 입력받는다
+      INPUT_RECORD buffer;
+      DWORD events;
+      PeekConsoleInput(handle, &buffer, 1, &events);	//에러가 없는 경우 0이 아닌 값을 리턴
+      if(events > 0)					//에러가 없는 경우 다음을 실행
+      {
+        ReadConsoleInput(handle, &buffer, 1, &events);	//에러가 없는 경우 0이 아닌 값을 리턴
+        if (buffer.Event.KeyEvent.wVirtualKeyCode == VK_LEFT)	//눌린 키의 주소값을 저장
+        {
+          *c = KEYCODE_LEFT;					//왼쪽화살표의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == VK_UP)
+        {
+          *c = KEYCODE_UP;					//위쪽화살표의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == VK_RIGHT)
+        {
+          *c = KEYCODE_RIGHT;					//오른쪽화살표의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == VK_DOWN)
+        {
+          *c = KEYCODE_DOWN;					//아래화살표의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == 0x42)
+        {
+          *c = KEYCODE_B;					//B의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == 0x43)
+        {
+          *c = KEYCODE_C;					//C의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == 0x44)
+        {
+          *c = KEYCODE_D;					//D의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == 0x45)
+        {
+          *c = KEYCODE_E;					//E의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == 0x46)
+        {
+          *c = KEYCODE_F;					//F의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == 0x47)
+        {
+          *c = KEYCODE_G;					//G의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == 0x51)
+        {
+          *c = KEYCODE_Q;					//Q의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == 0x52)
+        {
+          *c = KEYCODE_R;					//R의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == 0x54)
+        {
+          *c = KEYCODE_T;					//T의 주소값 저장
+          return;
+        }
+        else if (buffer.Event.KeyEvent.wVirtualKeyCode == 0x56)
+        {
+          *c = KEYCODE_V;					//V의 주소값 저장
+          return;
+        }
+      }
+    }
+#endif
+  }
+  void shutdown()				// 종료 부분
+  {
+#ifndef _WIN32
+    tcsetattr(kfd, TCSANOW, &cooked);		//터미널 속성 설정
+#endif
+  }
+private:
+#ifndef _WIN32
+  int kfd;
+  struct termios cooked;			//구조체 선언
+#endif
+};
+
+KeyboardReader input;
+
+class TeleopTurtle
+{
+public:
+  TeleopTurtle();
+  void keyLoop();
+
+private:
+
+  
+  ros::NodeHandle nh_;					//ros node handle
+  double linear_, angular_, l_scale_, a_scale_;
+  ros::Publisher twist_pub_;
+  
+};
+
+TeleopTurtle::TeleopTurtle():
+  linear_(0),
+  angular_(0),
+  l_scale_(2.0),
+  a_scale_(2.0)
+{
+  nh_.param("scale_angular", a_scale_, a_scale_);
+  nh_.param("scale_linear", l_scale_, l_scale_);
+
+  twist_pub_ = nh_.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1);
+}
+
+void quit(int sig)				//종료 부분
+{
+  (void)sig;
+  input.shutdown();				//KeyboardReader 의 shutdown함수
+  ros::shutdown();
+  exit(0);
+}
+
+
+int main(int argc, char** argv)
+{
+  ros::init(argc, argv, "teleop_turtle");	//문자열 출력
+  TeleopTurtle teleop_turtle;
+
+  signal(SIGINT,quit);				//터미널 인터럽트 종료
+
+  teleop_turtle.keyLoop();
+  quit(0);					//프로그램을 끝낸다
+  
+  return(0);
+}
+
+
+void TeleopTurtle::keyLoop()
+{
+  char c;
+  bool dirty=false;
+
+  puts("Reading from keyboard");				//문자열 출력
+  puts("---------------------------");
+  puts("Use arrow keys to move the turtle. 'q' to quit.");
+
+
+  for(;;)
+  {
+    // get the next event from the keyboard  
+    try					//예외가 발생하게되면 catch로 이동
+    {
+      input.readOne(&c);
+    }
+    catch (const std::runtime_error &)
+    {
+      perror("read():");		//read():read failed 메시지를 출력한다.
+      return;
+    }
+
+    linear_=angular_=0;			//변수값 초기화
+    ROS_DEBUG("value: 0x%02X\n", c);
+  
+    switch(c)
+    {
+      case KEYCODE_LEFT:		//왼쪽 방향키를 누르면 각속도는 1
+        ROS_DEBUG("LEFT");
+        angular_ = 1.0;
+        dirty = true;
+        break;
+      case KEYCODE_RIGHT:		//오른쪽 방향키를 누르면 각속도는 -1
+        ROS_DEBUG("RIGHT");
+        angular_ = -1.0;
+        dirty = true;
+        break;
+      case KEYCODE_UP:			//위쪽 방향키를 누르면 속도는 1
+        ROS_DEBUG("UP");
+        linear_ = 1.0;
+        dirty = true;
+        break;
+      case KEYCODE_DOWN:		//아래쪽 방향키를 누르면 속도는 -1
+        ROS_DEBUG("DOWN");
+        linear_ = -1.0;
+        dirty = true;
+        break;
+      case KEYCODE_Q:			//Q를 누르면 끝냄
+        ROS_DEBUG("quit");
+        return;
+    }
+   
+
+    geometry_msgs::Twist twist;
+    twist.angular.z = a_scale_*angular_;
+    twist.linear.x = l_scale_*linear_;
+    if(dirty ==true)				//터틀봇을 움직이는 키를 눌렀을 때 메시지 출력
+    {
+      twist_pub_.publish(twist);    		//데이터 송신
+      dirty=false;
+    }
+  }
+
+
+  return;
+}
+
+
+
