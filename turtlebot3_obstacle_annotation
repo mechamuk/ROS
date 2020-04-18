@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+#################################################################################
+# Copyright 2018 ROBOTIS CO., LTD.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#################################################################################
+
+# Authors: Gilbert #
+
+import rospy				#ros에 관한 파이썬 라이브러리를 가져온다.
+import math				#math 모듈을 가져온다.
+from sensor_msgs.msg import LaserScan	#Raw Message Definition 관련 모듈을 가져온다.
+from geometry_msgs.msg import Twist	#속도 관련 raw message 정의 모듈을 가져온다.
+
+LINEAR_VEL = 0.22			#직진 속도 정의
+STOP_DISTANCE = 0.5			#어느 정도의 거리에서 멈출지 거리 정의
+LIDAR_ERROR = 0.05			#LIDAR_ERROR 정의
+SAFE_STOP_DISTANCE = STOP_DISTANCE + LIDAR_ERROR #발생할 수 있는 에러를 더해서 안전하게 멈출 거리 정의
+
+class Obstacle():
+    def __init__(self):			#생성자 정의
+        self._cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)	#노드 이름, message class, queus_size를 정해서 rospy.Publisher를 만들어 self._cmd_pub를 설정한다.
+        self.obstacle()			#obstacle 실행
+        
+    def get_scan(self):			#메서드를 정의한다.
+        scan = rospy.wait_for_message('scan', LaserScan)	#subscription을 만들고 메시지를 받으면 수신을 그만둔다. 
+        scan_filter = []					#scan_filter 선언
+       
+        samples = len(scan.ranges)  # The number of samples is defined in 
+                                    # turtlebot3_<model>.gazebo.xacro file,
+                                    # the default is 360.
+        samples_view = 1            # 1 <= samples_view <= samples
+        
+        if samples_view > samples:		#samples_view가 samples보다 클 경우
+            samples_view = samples		#samples_view를 samples로 설정한다.
+
+        if samples_view is 1:			#samples_view가 1일 경우
+            scan_filter.append(scan.ranges[0])	#scan.ranges의 첫번째 값을 추가한다.
+
+        else:					#아닐 경우 다음 코드를 실행한다.
+            left_lidar_samples_ranges = -(samples_view//2 + samples_view % 2)	#left_lidar_samples_ranges를 samples_view를 2로 나눌 때의 몫과 samples_view를 2로 나눈 나머지를 더한 값의 (-)로 설정
+            right_lidar_samples_ranges = samples_view//2	#samples_view를 2로 나눈 몫으로 설정
+            							# 좌우 180도씩 해서 총 360도 확인
+            left_lidar_samples = scan.ranges[left_lidar_samples_ranges:]	#왼쪽 스캔
+            right_lidar_samples = scan.ranges[:right_lidar_samples_ranges]	#오른쪽 스캔
+            scan_filter.extend(left_lidar_samples + right_lidar_samples)	# 두 개를 합쳐서 360도의 값을 리스트에 추가한다. (단 이 경우는 samples_view가 1이 아닌 경우) 이 코드에서는 samples_view가 계속 1이다.
+
+        for i in range(samples_view):			#0 부터 359(samples_view-1)까지 반복
+            if scan_filter[i] == float('Inf'):		#벽과의 거리가 매우 멀면
+                scan_filter[i] = 3.5			# 최대 3.5로 한다.
+            elif math.isnan(scan_filter[i]):		#숫자가 아닐 경우
+                scan_filter[i] = 0			# 0으로 한다.
+        
+        return scan_filter				#scan_filter를 반환한다.
+
+    def obstacle(self):					#매서드 정의
+        twist = Twist()					#객체 생성
+        turtlebot_moving = True				#turtlebot_moving 활성화
+
+        while not rospy.is_shutdown():			#rospy가 끝나지 않았을 경우 실행
+            lidar_distances = self.get_scan()		#scan_filter 저장
+            min_distance = min(lidar_distances)		# 가장 가까운 벽과의 거리값 저장
+
+            if min_distance < SAFE_STOP_DISTANCE:	#가장 작은 센서값이 안전거리보다 작을 때
+                if turtlebot_moving:			# 로봇이 움직이고 있으면
+                    twist.linear.x = 0.0		#  속도를 0으로 한다.
+                    twist.angular.z = 0.0		#  각속도를 0으로 한다.
+                    self._cmd_pub.publish(twist)	#  메시지 출력
+                    turtlebot_moving = False		#  turtlebot_moving 비활성화
+                    rospy.loginfo('Stop!')		#  'Stop!'메시지 출력
+            else:					# 아닐 경우
+                twist.linear.x = LINEAR_VEL		#  직진 속도를 0.22
+                twist.angular.z = 0.0			#  각속도를 0으로 한다.
+                self._cmd_pub.publish(twist)		#  메시지 출력
+                turtlebot_moving = True			# turtlebot_moving 활성화
+                rospy.loginfo('Distance of the obstacle : %f', min_distance)	#장애물 거리 출력
+
+def main():						#메인문 함수
+    rospy.init_node('turtlebot3_obstacle')		#ROS node 실행
+    try:						#아래 코드를 실행
+        obstacle = Obstacle()
+    except rospy.ROSInterruptException:			#종료 명령이 들어왔는지 확인하지만
+        pass						# pass 한다.
+
+if __name__ == '__main__':				#Import로 파일이 실행된 경우
+    main()						# main()을 실행한다.

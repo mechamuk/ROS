@@ -1,0 +1,27 @@
+Install SimpleScreenRecorder
+sudo add-apt-repository ppa:maarten-baert/simplescreenrecorder
+sudo apt-update
+sudo apt-get install simplescreenrecorder
+
+source
+https://pinkwink.kr/913
+
+
+about select.select
+https://python.flowdas.com/howto/sockets.html
+
+about fileno()
+https://docs.python.org/ko/3/library/io.html#io.IOBase.fileno
+
+about __name__
+https://medium.com/@chullino/if-name-main-%EC%9D%80-%EC%99%9C-%ED%95%84%EC%9A%94%ED%95%A0%EA%B9%8C-bc48cba7f720
+https://dojang.io/mod/page/view.php?id=2448
+
+about  nt
+https://teamtreehouse.com/community/i-dont-understand-osnament-what-is-nt-and-osname
+
+about rospy.init_node
+http://wiki.ros.org/rospy/Overview/Initialization%20and%20Shutdown
+
+about socket
+https://python.flowdas.com/howto/sockets.html

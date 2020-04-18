@@ -1,0 +1,22 @@
+__init__	이는 생성자이다.
+https://wikidocs.net/28#constructor
+
+float('Inf')	무한대
+https://python.bakyeono.net/chapter-4-2.html
+
+math.isnan	Not a number
+https://shydev.tistory.com/9
+
+except rospy.ROSInterruptException	Ctrl-C 또는 노드가 종료되는지 확인
+http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28python%29
+
+<launch>, </launch>
+http://www.clearpathrobotics.com/assets/guides/ros/Launch%20Files.html
+
+try except pass
+https://freeristea.tistory.com/entry/Python-%ED%8C%8C%EC%9D%B4%EC%8D%AC-%EC%98%88%EC%99%B8%EC%B2%98%EB%A6%AC-try-except-else-pass-rise
+
+list
+https://pydole.tistory.com/entry/Python-index-%ED%95%A8%EC%88%98-%EB%B0%B0%EC%97%B4%EC%97%90%EC%84%9C-%EC%9B%90%ED%95%98%EB%8A%94-%EA%B0%92%EC%9D%98-%EC%9C%84%EC%B9%98-%EC%B0%BE%EA%B8%B0
+
+
